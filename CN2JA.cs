@@ -15,9 +15,16 @@ namespace GB2JIS
         static private Encoding? GB2312;
         static private Encoding? JIS;
 
-        static private Dictionary<char, char> GB_JIS_EXT = new()
+        static private Dictionary<char, char> GB_JIS_EXTC = new()
         {
             {'濑', '瀬'},
+            //{'面', '麺'},
+        };
+
+        static private Dictionary<string, string> GB_JIS_EXTS = new()
+        {
+            {"拉面", "拉麺"},
+            {"面条", "麺条"},
         };
 
         static CN2JA()
@@ -36,6 +43,8 @@ namespace GB2JIS
                 JIS = Encoding.GetEncoding("SHIFT_JIS");
 
                 InitUnihanTable();
+                InitCustomDict();
+
                 InitGBJISTable();
             }
             catch (Exception ex)
@@ -44,6 +53,23 @@ namespace GB2JIS
                 MessageBox.Show(Application.Current.MainWindow, ex.Message);
             }
             #endregion
+        }
+
+        static internal void InitCustomDict()
+        {
+            if (!System.IO.File.Exists("GB2JIS_CustomDict.txt")) return;
+            var lines = System.IO.File.ReadAllLines("GB2JIS_CustomDict.txt");
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("#") || string.IsNullOrEmpty(line)) continue;
+                try
+                {
+                    var kv = line.Split(new[] { "=>", "=", "\t", ">", ",", "|" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    if (kv.Length != 2) continue;
+                    GB_JIS_EXTS[kv[0]] = kv[1];
+                }
+                catch { }
+            }
         }
 
         #region Convert Chinese to Japanese Kanji
@@ -86,7 +112,7 @@ namespace GB2JIS
                     }
                 }
 
-                foreach (var kv in GB_JIS_EXT)
+                foreach (var kv in GB_JIS_EXTC)
                 {
                     GB2312_List = [.. GB2312_List, kv.Key];
                     JIS_List = [.. JIS_List, kv.Value];
@@ -114,8 +140,9 @@ namespace GB2JIS
         {
             var result = line;
 
-            result = string.Join("", line.ToCharArray().Select(c => ConvertChinese2Japanese(c)));
-            //result = new string(line.ToCharArray().Select(c => ConvertChinese2Japanese(c)).ToArray());
+            result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Key, kv.Value));
+            result = string.Join("", result.ToCharArray().Select(c => ConvertChinese2Japanese(c)));
+            //result = new string(result.ToCharArray().Select(c => ConvertChinese2Japanese(c)).ToArray());
 
             return (result);
         }
@@ -149,7 +176,8 @@ namespace GB2JIS
         {
             var result = line;
 
-            result = string.Join("", line.ToCharArray().Select(c => ConvertJapanese2Chinese(c)));
+            result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Value, kv.Key));
+            result = string.Join("", result.ToCharArray().Select(c => ConvertJapanese2Chinese(c)));
             //result = new string(line.ToCharArray().Select(c => ConvertJapanese2Chinese(c)).ToArray());
 
             return (result);
@@ -218,8 +246,8 @@ namespace GB2JIS
         {
             var result = line;
 
-            result = string.Join("", line.ToCharArray().Select(c => UnihanSC2TC(c)));
-            //result = new string(line.ToCharArray().Select(c => UnihanSC2TC(c)).ToArray());
+            result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Key, kv.Value));
+            result = string.Join("", result.ToCharArray().Select(c => UnihanSC2TC(c)));
 
             return (result);
         }
@@ -248,8 +276,8 @@ namespace GB2JIS
         {
             var result = line;
 
-            result = string.Join("", line.ToCharArray().Select(c => UnihanTC2SC(c)));
-            //result = new string(line.ToCharArray().Select(c => UnihanTC2SC(c)).ToArray());
+            result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Value, kv.Key));
+            result = string.Join("", result.ToCharArray().Select(c => UnihanTC2SC(c)));
 
             return (result);
         }
@@ -286,8 +314,8 @@ namespace GB2JIS
         {
             var result = line;
 
-            result = string.Join("", line.ToCharArray().Select(c => UnihanChinese2Japanese(c)));
-            //result = new string(line.ToCharArray().Select(c => UnihanChinese2Japanese(c)).ToArray());
+            result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Key, kv.Value));
+            result = string.Join("", result.ToCharArray().Select(c => UnihanChinese2Japanese(c)));
 
             return (result);
         }
@@ -317,8 +345,8 @@ namespace GB2JIS
         {
             var result = line;
 
-            result = string.Join("", line.ToCharArray().Select(c => UnihanJapanese2Chinese(c)));
-            //result = new string(line.ToCharArray().Select(c => UnihanJapanese2Chinese(c)).ToArray());
+            result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Value, kv.Key));
+            result = string.Join("", result.ToCharArray().Select(c => UnihanJapanese2Chinese(c)));
 
             return (result);
         }
