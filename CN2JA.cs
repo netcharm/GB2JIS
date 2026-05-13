@@ -15,6 +15,11 @@ namespace GB2JIS
         static private Encoding? GB2312;
         static private Encoding? JIS;
 
+        static private Dictionary<char, char> GB_JIS_EXT = new()
+        {
+            {'濑', '瀬'},
+        };
+
         static CN2JA()
         {
             #region Extented the supported string charsets
@@ -31,6 +36,7 @@ namespace GB2JIS
                 JIS = Encoding.GetEncoding("SHIFT_JIS");
 
                 InitUnihanTable();
+                InitGBJISTable();
             }
             catch (Exception ex)
             {
@@ -79,7 +85,18 @@ namespace GB2JIS
                         JIS_List[i * 94 + j] = JIS.GetString(jis).First();
                     }
                 }
+
+                foreach (var kv in GB_JIS_EXT)
+                {
+                    GB2312_List = [.. GB2312_List, kv.Key];
+                    JIS_List = [.. JIS_List, kv.Value];
+                }
             }
+        }
+
+        static private bool InGB2312(char character)
+        {
+            return (GB2312_List.LastIndexOf(character) >= 0);
         }
 
         static public char ConvertChinese2Japanese(this char character)
@@ -87,7 +104,7 @@ namespace GB2JIS
             var result = character;
 
             InitGBJISTable();
-            var idx = GB2312_List.IndexOf(result);
+            var idx = GB2312_List.LastIndexOf(result);
             if (idx >= 0) result = JIS_List[idx];
 
             return (result);
@@ -112,12 +129,17 @@ namespace GB2JIS
             return (result);
         }
 
+        static private bool InJIS(char character)
+        {
+            return (JIS_List.LastIndexOf(character) >= 0);
+        }
+
         static public char ConvertJapanese2Chinese(this char character)
         {
             var result = character;
 
             InitGBJISTable();
-            var idx = JIS_List.IndexOf(result);
+            var idx = JIS_List.LastIndexOf(result);
             if (idx >= 0) result = GB2312_List[idx];
 
             return (result);
@@ -249,11 +271,14 @@ namespace GB2JIS
                 var variants = unihan_ja_dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
+            else if (InGB2312(character)) 
+                result = ConvertChinese2Japanese(character).ToString();
             else if (unihan_tc_dict?.ContainsKey(result) ?? false)
             {
                 var variants = unihan_tc_dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
+            else result = ConvertChinese2Japanese(character).ToString();
             return (result);
         }
 
@@ -284,6 +309,7 @@ namespace GB2JIS
                 var variants = unihan_sc_dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
+            else result = ConvertJapanese2Chinese(character).ToString();
             return (result);
         }
 

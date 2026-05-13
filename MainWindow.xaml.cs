@@ -64,7 +64,7 @@ public partial class MainWindow : Window
         if (sender == ConvertTextC2J)
             DstText.Text = UseUnihan ? CN2JA.UnihanChinese2Japanese(SrcText.Text) : CN2JA.ConvertChinese2Japanese(SrcText.Text);
         else if (sender == ConvertTextJ2C)
-            SrcText.Text = UseUnihan ? CN2JA.UnihanJapanese2Chinese(SrcText.Text) : CN2JA.ConvertJapanese2Chinese(DstText.Text);
+            SrcText.Text = UseUnihan ? CN2JA.UnihanJapanese2Chinese(DstText.Text) : CN2JA.ConvertJapanese2Chinese(DstText.Text);
         else if (sender == SearchTextCN)
             LocalSearchText(string.Join(" ", SplitText(SrcText.Text)).Trim());
         else if (sender == SearchTextJA)
