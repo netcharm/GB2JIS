@@ -127,8 +127,8 @@ namespace GB2JIS
 
                 foreach (var kv in GB_JIS_EXTC)
                 {
-                    GB2312_List = [.. GB2312_List, kv.Key];
-                    JIS_List = [.. JIS_List, kv.Value];
+                    GB2312_List.Insert(0, kv.Key);
+                    JIS_List.Insert(0, kv.Value);
                 }
             }
         }
@@ -136,7 +136,8 @@ namespace GB2JIS
         static private bool InGB2312(char character)
         {
             GB2312_List ??= [];
-            return (GB2312_List.LastIndexOf(character) >= 0);
+            //return (GB2312_List.LastIndexOf(character) >= 0);
+            return (GB2312_List.IndexOf(character) >= 0);
         }
 
         static public char ConvertChinese2Japanese(this char character)
@@ -144,7 +145,8 @@ namespace GB2JIS
             var result = character;
 
             InitGBJISTable();
-            var idx = GB2312_List.LastIndexOf(result);
+            //var idx = GB2312_List.LastIndexOf(result);
+            var idx = GB2312_List.IndexOf(result);
             if (idx >= 0) result = JIS_List[idx];
 
             return (result);
@@ -172,7 +174,7 @@ namespace GB2JIS
         static private bool InJIS(char character)
         {
             JIS_List ??= [];
-            return (JIS_List.LastIndexOf(character) >= 0);
+            return (JIS_List.IndexOf(character) >= 0);
         }
 
         static public char ConvertJapanese2Chinese(this char character)
@@ -180,7 +182,7 @@ namespace GB2JIS
             var result = character;
 
             InitGBJISTable();
-            var idx = JIS_List.LastIndexOf(result);
+            var idx = JIS_List.IndexOf(result);
             if (idx >= 0) result = GB2312_List[idx];
 
             return (result);

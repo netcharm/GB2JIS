@@ -38,10 +38,14 @@
                 </Style.Resources>
             </Style>
                         
-           <Style TargetType="{x:Type TextBox}">
+            <Style TargetType="{x:Type TextBox}">
                 <Setter Property="FontFamily" Value="{DynamicResource NormalFamily}"/>
             </Style>
-                        
+
+            <Style TargetType="{x:Type TextBlock}">
+                <Setter Property="FontFamily" Value="{DynamicResource NormalFamily}"/>
+            </Style>
+
             <Style x:Key="SegoeIconStyle" TargetType="{x:Type Button}">
                 <Setter Property="FontFamily" Value="{DynamicResource SegoeIconFamily}"/>
             </Style>
