@@ -8,12 +8,15 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 
+#pragma warning disable IDE0079 // 请删除不必要的忽略
+#pragma warning disable SYSLIB1045 // 转换为“GeneratedRegexAttribute”。
+
 namespace GB2JIS
 {
     internal static class CN2JA
     {
-        static private Encoding? GB2312;
-        static private Encoding? JIS;
+        private static readonly Encoding? GB2312;
+        private static readonly Encoding? JIS;
 
         static private Dictionary<char, char> GB_JIS_EXTC = new()
         {
@@ -52,19 +55,25 @@ namespace GB2JIS
                 //Process.GetCurrentProcess().MainWindowHandle;
                 MessageBox.Show(Application.Current.MainWindow, ex.Message);
             }
+            finally
+            {
+                GC.Collect();
+            }
             #endregion
         }
 
         static internal void InitCustomDict()
         {
             if (!System.IO.File.Exists("GB2JIS_CustomDict.txt")) return;
+
+            GB_JIS_EXTS ??= [];
             var lines = System.IO.File.ReadAllLines("GB2JIS_CustomDict.txt");
             foreach (var line in lines)
             {
-                if (line.StartsWith("#") || string.IsNullOrEmpty(line)) continue;
+                if (line.StartsWith('#') || string.IsNullOrEmpty(line.Trim())) continue;
                 try
                 {
-                    var kv = line.Split(new[] { "=>", "=", "\t", ">", ",", "|" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    var kv = line.Split(["=>", "=", "\t", ">", ",", "|"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                     if (kv.Length != 2) continue;
                     GB_JIS_EXTS[kv[0]] = kv[1];
                 }
@@ -73,10 +82,14 @@ namespace GB2JIS
         }
 
         #region Convert Chinese to Japanese Kanji
-        static private List<char> GB2312_List { get; set; } = new List<char>();
-        static private List<char> JIS_List { get; set; } = new List<char>();
+        static private List<char> GB2312_List { get; set; } = [];
+        static private List<char> JIS_List { get; set; } = [];
         static internal void InitGBJISTable()
         {
+            GB2312_List ??= [];
+            JIS_List ??= [];
+            GB_JIS_EXTC ??= [];
+
             if (JIS is null || GB2312 is null) return;
 
             if (JIS_List.Count == 0 || GB2312_List.Count == 0)
@@ -91,9 +104,9 @@ namespace GB2JIS
                 dat.Read(jis_data, 0, jis_data.Length);
 
                 //var jis_data = Properties.Resources.GB2JIS;
-                var jis_count = jis_data.Length / 2;
-                JIS_List = JIS.GetString(jis_data).ToList();
-                GB2312_List = GB2312.GetString(jis_data).ToList();
+                //var jis_count = jis_data.Length / 2;
+                JIS_List = [.. JIS.GetString(jis_data)];
+                GB2312_List = [.. GB2312.GetString(jis_data)];
 
                 var jis = new byte[2];
                 var gb2312 = new byte[2];
@@ -122,6 +135,7 @@ namespace GB2JIS
 
         static private bool InGB2312(char character)
         {
+            GB2312_List ??= [];
             return (GB2312_List.LastIndexOf(character) >= 0);
         }
 
@@ -141,23 +155,23 @@ namespace GB2JIS
             var result = line;
 
             result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Key, kv.Value));
-            result = string.Join("", result.ToCharArray().Select(c => ConvertChinese2Japanese(c)));
-            //result = new string(result.ToCharArray().Select(c => ConvertChinese2Japanese(c)).ToArray());
+            result = result.Select(ConvertChinese2Japanese).ToString();
 
-            return (result);
+            return (result ?? line);
         }
 
         static public IList<string> ConvertChinese2Japanese(this IEnumerable<string> lines)
         {
             var result = new List<string>();
 
-            result.AddRange(lines.Select(l => ConvertChinese2Japanese(l)).ToList());
+            result.AddRange([.. lines.Select(ConvertChinese2Japanese)]);
 
             return (result);
         }
 
         static private bool InJIS(char character)
         {
+            JIS_List ??= [];
             return (JIS_List.LastIndexOf(character) >= 0);
         }
 
@@ -177,66 +191,70 @@ namespace GB2JIS
             var result = line;
 
             result = GB_JIS_EXTS.Aggregate(result, (current, kv) => current.Replace(kv.Value, kv.Key));
-            result = string.Join("", result.ToCharArray().Select(c => ConvertJapanese2Chinese(c)));
-            //result = new string(line.ToCharArray().Select(c => ConvertJapanese2Chinese(c)).ToArray());
+            result = result.Select(ConvertJapanese2Chinese).ToString();
 
-            return (result);
+            return (result ?? line);
         }
 
         static public IList<string> ConvertJapanese2Chinese(this IEnumerable<string> lines)
         {
             var result = new List<string>();
 
-            result.AddRange(lines.Select(l => ConvertJapanese2Chinese(l)).ToList());
+            result.AddRange([.. lines.Select(ConvertJapanese2Chinese)]);
 
             return (result);
         }
         #endregion
 
         #region Unicode Unihan routines
-        static private Dictionary<string, string[]> unihan_sc_dict { get; set; } = new();
-        static private Dictionary<string, string[]> unihan_tc_dict { get; set; } = new();
-        static private Dictionary<string, string[]> unihan_ja_dict { get; set; } = new();
+        static private Dictionary<string, string[]> Unihan_SC_Dict { get; set; } = [];
+        static private Dictionary<string, string[]> Unihan_TC_Dict { get; set; } = [];
+        static private Dictionary<string, string[]> Unihan_JA_Dict { get; set; } = [];
 
         static internal void InitUnihanTable()
         {
+            Unihan_SC_Dict ??= [];
+            Unihan_TC_Dict ??= [];
+            Unihan_JA_Dict ??= [];
+
             if (!System.IO.File.Exists("Unihan_Variants.txt")) return;
 
-            if (unihan_sc_dict.Count == 0 || unihan_tc_dict.Count == 0 || unihan_ja_dict.Count == 0)
+            if (Unihan_SC_Dict?.Count == 0 || Unihan_TC_Dict?.Count == 0 || Unihan_JA_Dict?.Count == 0)
             {
-                unihan_sc_dict.Clear();
-                unihan_tc_dict.Clear();
-                unihan_ja_dict.Clear();
+                Unihan_SC_Dict?.Clear();
+                Unihan_TC_Dict?.Clear();
+                Unihan_JA_Dict?.Clear();
 
+                var pat = new Regex(@"^U\+([0-9A-F]{4,5})\t(.+?)\t(U\+([0-9A-F]{4,5})\s?)+.*$", RegexOptions.IgnoreCase);
                 var unihan = System.IO.File.ReadAllLines("Unihan_Variants.txt");
                 foreach (var line in unihan)
                 {
-                    if (line.StartsWith("#") || string.IsNullOrEmpty(line)) continue;
+                    if (line.StartsWith('#') || string.IsNullOrEmpty(line)) continue;
                     try
                     {
-                        var m = Regex.Match(line, @"^U\+([0-9A-F]{4,5})\t(.+?)\t(U\+([0-9A-F]{4,5})\s?)+.*$");
-                        if (!m.Success) continue;
-                        var uni_value = char.ConvertFromUtf32(int.Parse(m.Groups[1].Value.ToString().Trim(), System.Globalization.NumberStyles.HexNumber));
-                        var uni_type = m.Groups[2].Value.ToString().Trim();
-                        var uni_variant = m.Groups[3].Value.ToString().Trim().Split().Select(u => char.ConvertFromUtf32(int.Parse(u.Trim().Substring(2), System.Globalization.NumberStyles.HexNumber))).ToArray();
+                        if (pat.Match(line) is not { Success: true } m) continue;
+                        var uni_value = char.ConvertFromUtf32(int.Parse(m.Groups[1].Value.Trim(), System.Globalization.NumberStyles.HexNumber));
+                        var uni_type = m.Groups[2].Value.Trim();
+                        var uni_variant = m.Groups[3].Value.Trim().Split().Select(u => char.ConvertFromUtf32(int.Parse(u.Trim()[2..], System.Globalization.NumberStyles.HexNumber))).ToArray();
 
-                        if (uni_type.Equals("kSimplifiedVariant")) unihan_sc_dict[uni_value] = uni_variant;
-                        if (uni_type.Equals("kTraditionalVariant")) unihan_tc_dict[uni_value] = uni_variant;
-                        if (uni_type.Equals("kJapaneseVariant")) unihan_ja_dict[uni_value] = uni_variant;
+                        if (uni_type.Equals("kSimplifiedVariant")) Unihan_SC_Dict?[uni_value] = uni_variant;
+                        if (uni_type.Equals("kTraditionalVariant")) Unihan_TC_Dict?[uni_value] = uni_variant;
+                        if (uni_type.Equals("kJapaneseVariant")) Unihan_JA_Dict?[uni_value] = uni_variant;
                     }
                     catch { }
                 }
             }
         }
 
-        static public bool UnihanValid => unihan_sc_dict?.Count > 0 && unihan_tc_dict?.Count > 0 && unihan_ja_dict?.Count >= 0;
+        static public bool UnihanValid => Unihan_SC_Dict?.Count > 0 && Unihan_TC_Dict?.Count > 0 && Unihan_JA_Dict?.Count >= 0;
 
         static public string UnihanSC2TC(this char character)
         {
             var result = character.ToString();
-            if (unihan_tc_dict?.ContainsKey(result) ?? false)
+            Unihan_TC_Dict ??= [];
+            if (Unihan_TC_Dict?.ContainsKey(result) ?? false)
             {
-                var variants = unihan_tc_dict[result];
+                var variants = Unihan_TC_Dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
             return (result);
@@ -256,7 +274,7 @@ namespace GB2JIS
         {
             var result = new List<string>();
 
-            result.AddRange(lines.Select(l => UnihanSC2TC(l)).ToList());
+            result.AddRange([.. lines.Select(UnihanSC2TC)]);
 
             return (result);
         }
@@ -264,9 +282,10 @@ namespace GB2JIS
         static public string UnihanTC2SC(this char character)
         {
             var result = character.ToString();
-            if (unihan_sc_dict?.ContainsKey(result) ?? false)
+            Unihan_SC_Dict ??= [];
+            if (Unihan_SC_Dict?.ContainsKey(result) ?? false)
             {
-                var variants = unihan_sc_dict[result];
+                var variants = Unihan_SC_Dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
             return (result);
@@ -286,7 +305,7 @@ namespace GB2JIS
         {
             var result = new List<string>();
 
-            result.AddRange(lines.Select(l => UnihanTC2SC(l)).ToList());
+            result.AddRange([.. lines.Select(UnihanTC2SC)]);
 
             return (result);
         }
@@ -294,16 +313,19 @@ namespace GB2JIS
         static public string UnihanChinese2Japanese(this char character)
         {
             var result = character.ToString();
-            if (unihan_ja_dict?.ContainsKey(result) ?? false)
+            Unihan_JA_Dict ??= [];
+            Unihan_TC_Dict ??= [];
+
+            if (Unihan_JA_Dict?.ContainsKey(result) ?? false)
             {
-                var variants = unihan_ja_dict[result];
+                var variants = Unihan_JA_Dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
             else if (InGB2312(character)) 
                 result = ConvertChinese2Japanese(character).ToString();
-            else if (unihan_tc_dict?.ContainsKey(result) ?? false)
+            else if (Unihan_TC_Dict?.ContainsKey(result) ?? false)
             {
-                var variants = unihan_tc_dict[result];
+                var variants = Unihan_TC_Dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
             else result = ConvertChinese2Japanese(character).ToString();
@@ -324,7 +346,7 @@ namespace GB2JIS
         {
             var result = new List<string>();
 
-            result.AddRange(lines.Select(l => UnihanChinese2Japanese(l)).ToList());
+            result.AddRange([.. lines.Select(UnihanChinese2Japanese)]);
 
             return (result);
         }
@@ -332,9 +354,11 @@ namespace GB2JIS
         static public string UnihanJapanese2Chinese(this char character)
         {
             var result = character.ToString();
-            if (unihan_sc_dict?.ContainsKey(result) ?? false)
+            Unihan_SC_Dict ??= [];
+
+            if (Unihan_SC_Dict?.ContainsKey(result) ?? false)
             {
-                var variants = unihan_sc_dict[result];
+                var variants = Unihan_SC_Dict[result];
                 if (variants.Length > 0) result = string.Join("/", variants);
             }
             else result = ConvertJapanese2Chinese(character).ToString();
@@ -355,7 +379,7 @@ namespace GB2JIS
         {
             var result = new List<string>();
 
-            result.AddRange(lines.Select(l => UnihanJapanese2Chinese(l)).ToList());
+            result.AddRange([.. lines.Select(UnihanJapanese2Chinese)]);
 
             return (result);
         }
