@@ -18,11 +18,8 @@ namespace GB2JIS
         private static readonly Encoding? GB2312;
         private static readonly Encoding? JIS;
 
-        static private Dictionary<char, char> GB_JIS_EXTC = new()
-        {
-            {'濑', '瀬'},
-            //{'面', '麺'},
-        };
+        static private HashSet<char> GB_JIS_EXTCJ { get; set; } = [];
+        static private HashSet<char> GB_JIS_EXTCS { get; set; } = [];
 
         static private Dictionary<string, string> GB_JIS_EXTS = new()
         {
@@ -79,16 +76,20 @@ namespace GB2JIS
                 }
                 catch { }
             }
+            GB_JIS_EXTCS = [.. GB_JIS_EXTS.Keys.SelectMany(k => k.ToCharArray())];
+            GB_JIS_EXTCJ = [.. GB_JIS_EXTS.Values.SelectMany(k => k.ToCharArray())];
         }
 
         #region Convert Chinese to Japanese Kanji
         static private List<char> GB2312_List { get; set; } = [];
         static private List<char> JIS_List { get; set; } = [];
+        
         static internal void InitGBJISTable()
         {
             GB2312_List ??= [];
             JIS_List ??= [];
-            GB_JIS_EXTC ??= [];
+            GB_JIS_EXTCS ??= [];
+            GB_JIS_EXTCJ ??= [];
 
             if (JIS is null || GB2312 is null) return;
 
@@ -124,12 +125,6 @@ namespace GB2JIS
                         JIS_List[i * 94 + j] = JIS.GetString(jis).First();
                     }
                 }
-
-                foreach (var kv in GB_JIS_EXTC)
-                {
-                    GB2312_List.Insert(0, kv.Key);
-                    JIS_List.Insert(0, kv.Value);
-                }
             }
         }
 
@@ -145,7 +140,13 @@ namespace GB2JIS
             var result = character;
 
             InitGBJISTable();
-            //var idx = GB2312_List.LastIndexOf(result);
+
+            if (char.IsAscii(character)) return (result);
+            if (char.IsDigit(character)) return (result);
+            if (char.IsPunctuation(character)) return (result);
+            if (char.IsSymbol(character)) return (result);
+
+            if (GB_JIS_EXTCS?.Contains(character) ?? false) return (result);
             var idx = GB2312_List.IndexOf(result);
             if (idx >= 0) result = JIS_List[idx];
 
@@ -182,6 +183,13 @@ namespace GB2JIS
             var result = character;
 
             InitGBJISTable();
+
+            if (char.IsAscii(character)) return (result);
+            if (char.IsDigit(character)) return (result);
+            if (char.IsPunctuation(character)) return (result);
+            if (char.IsSymbol(character)) return (result);
+
+            if (GB_JIS_EXTCJ?.Contains(character) ?? false) return (result);
             var idx = JIS_List.IndexOf(result);
             if (idx >= 0) result = GB2312_List[idx];
 
@@ -254,6 +262,12 @@ namespace GB2JIS
         {
             var result = character.ToString();
             Unihan_TC_Dict ??= [];
+
+            if (char.IsAscii(character)) return (result);
+            if (char.IsDigit(character)) return (result);
+            if (char.IsPunctuation(character)) return (result);
+            if (char.IsSymbol(character)) return (result);
+
             if (Unihan_TC_Dict?.ContainsKey(result) ?? false)
             {
                 var variants = Unihan_TC_Dict[result];
@@ -285,6 +299,12 @@ namespace GB2JIS
         {
             var result = character.ToString();
             Unihan_SC_Dict ??= [];
+
+            if (char.IsAscii(character)) return (result);
+            if (char.IsDigit(character)) return (result);
+            if (char.IsPunctuation(character)) return (result);
+            if (char.IsSymbol(character)) return (result);
+
             if (Unihan_SC_Dict?.ContainsKey(result) ?? false)
             {
                 var variants = Unihan_SC_Dict[result];
@@ -317,6 +337,12 @@ namespace GB2JIS
             var result = character.ToString();
             Unihan_JA_Dict ??= [];
             Unihan_TC_Dict ??= [];
+
+            if (char.IsAscii(character)) return (result);
+            if (char.IsDigit(character)) return (result);
+            if (char.IsPunctuation(character)) return (result);
+            if (char.IsSymbol(character)) return (result);
+            if (GB_JIS_EXTCS?.Contains(character) ?? false) return (result);
 
             if (Unihan_JA_Dict?.ContainsKey(result) ?? false)
             {
@@ -357,6 +383,12 @@ namespace GB2JIS
         {
             var result = character.ToString();
             Unihan_SC_Dict ??= [];
+
+            if (char.IsAscii(character)) return (result);
+            if (char.IsDigit(character)) return (result);
+            if (char.IsPunctuation(character)) return (result);
+            if (char.IsSymbol(character)) return (result);
+            if (GB_JIS_EXTCJ?.Contains(character) ?? false) return (result);
 
             if (Unihan_SC_Dict?.ContainsKey(result) ?? false)
             {
