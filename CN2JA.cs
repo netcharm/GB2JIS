@@ -21,11 +21,10 @@ namespace GB2JIS
         static private HashSet<char> GB_JIS_EXTCJ { get; set; } = [];
         static private HashSet<char> GB_JIS_EXTCS { get; set; } = [];
 
-        static private Dictionary<string, string> GB_JIS_EXTS = new()
-        {
-            {"拉面", "拉麺"},
-            {"面条", "麺条"},
-        };
+        static private Dictionary<string, string> GB_JIS_EXTS = [];
+
+        static public string CustomDictFile { get; set; } = "GB2JIS_CustomDict.txt";
+        static public string UnihanVarsFile { get; set; } = "Unihan_Variants.txt";
 
         static CN2JA()
         {
@@ -61,10 +60,11 @@ namespace GB2JIS
 
         static internal void InitCustomDict()
         {
-            if (!System.IO.File.Exists("GB2JIS_CustomDict.txt")) return;
+
+            if (!System.IO.File.Exists(CustomDictFile)) return;
 
             GB_JIS_EXTS ??= [];
-            var lines = System.IO.File.ReadAllLines("GB2JIS_CustomDict.txt");
+            var lines = System.IO.File.ReadAllLines(CustomDictFile);
             foreach (var line in lines)
             {
                 if (line.StartsWith('#') || string.IsNullOrEmpty(line.Trim())) continue;
@@ -227,7 +227,7 @@ namespace GB2JIS
             Unihan_TC_Dict ??= [];
             Unihan_JA_Dict ??= [];
 
-            if (!System.IO.File.Exists("Unihan_Variants.txt")) return;
+            if (!System.IO.File.Exists(UnihanVarsFile)) return;
 
             if (Unihan_SC_Dict?.Count == 0 || Unihan_TC_Dict?.Count == 0 || Unihan_JA_Dict?.Count == 0)
             {
@@ -236,7 +236,7 @@ namespace GB2JIS
                 Unihan_JA_Dict?.Clear();
 
                 var pat = new Regex(@"^U\+([0-9A-F]{4,5})\t(.+?)\t(U\+([0-9A-F]{4,5})\s?)+.*$", RegexOptions.IgnoreCase);
-                var unihan = System.IO.File.ReadAllLines("Unihan_Variants.txt");
+                var unihan = System.IO.File.ReadAllLines(UnihanVarsFile);
                 foreach (var line in unihan)
                 {
                     if (line.StartsWith('#') || string.IsNullOrEmpty(line)) continue;

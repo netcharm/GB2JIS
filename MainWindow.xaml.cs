@@ -42,12 +42,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        MinWidth = 720;
+        MinHeight = 480;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        CN2JA.InitGBJISTable();
-        //Resources.
+
     }
 
     private void PasteText_Click(object sender, RoutedEventArgs e)
